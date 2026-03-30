@@ -27,7 +27,7 @@ trip-plan/
 │   ├── er-diagram.png           # ER-диаграмма
 │   └── use-case-diagram.png     # Диаграмма вариантов использования
 └── api/
-    └── openapi.yaml              # Спецификация REST API (OpenAPI 3.0.3)
+     └── openapi.yaml              # Спецификация REST API (OpenAPI 3.0.3)
 ```
 
 ## Артефакты
