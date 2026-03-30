@@ -44,7 +44,6 @@ trip-plan/
 - **Приоритизация:** Must have / Should have / Could have
 
 ### 3. Варианты использования [(Use Cases)](docs/use_cases.md)
-`docs/03_use_cases.md`
 
 Диаграмма вариантов использования [(UML Use Case)](diagrams/use-case-diagram.png) и текстовые описания 6 основных сценариев:
 
