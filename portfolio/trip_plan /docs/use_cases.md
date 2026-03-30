@@ -1,6 +1,6 @@
 # Диаграмма вариантов использования Trip plan
  
-> ![Диаграмма вариантов использования](portfolio/trip_plan /diagrams/use-case-diagram.png)
+[Диаграмма вариантов использования](EugeneLav7/portfolio/trip_plan/diagrams/use-case-diagram.png)
  
 ## I. Описание основных вариантов использования
  
