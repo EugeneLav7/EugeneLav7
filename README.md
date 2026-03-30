@@ -66,7 +66,7 @@
  
 ---
  
-## 🎓 Сертификаты
+## 🎓 Дипломы и сертификаты
  
 - [Нетология — «Системный аналитик: расширенный курс»](certificates/netology_system_analyst.pdf) (2025)
 - [Росбанк — «Основы бизнес-анализа»](certificates/rosbank_business_analysis.pdf) (2024)
