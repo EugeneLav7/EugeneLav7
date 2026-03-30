@@ -59,7 +59,7 @@
  
 ## 🚀 Проекты
  
-[![Trip Plan](https://img.shields.io/badge/Trip_Plan-📱_Мобильное_приложение_для_турагентства-4CA154?style=flat-square&logo=github)](portfolio/trip_plan/readme.md)
+[![Trip Plan](https://img.shields.io/badge/Trip_Plan-📱_Мобильное_приложение_для_турагентства-4CA154?style=flat-square&logo=github)](portfolio/trip_plan%20/readme.md)
  
 <!-- Добавляй новые проекты по шаблону ниже: -->
 <!-- [![Название](https://img.shields.io/badge/Название-Краткое_описание-ЦВЕТ?style=flat-square&logo=github)](https://github.com/EugeneLav7/repo-name) -->
