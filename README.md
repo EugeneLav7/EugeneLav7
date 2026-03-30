@@ -70,6 +70,7 @@
  
 - [Нетология — «Системный аналитик: расширенный курс»](certificates/netology_system_analyst.pdf) (2025)
 - [Росбанк — «Основы бизнес-анализа»](certificates/rosbank_business_analysis.pdf) (2024)
+- [Росбанк — «Основы SQL»](certificates/rosbank_SQL.pdf) (2024)
  
 > ℹ️ *Ссылки на сертификаты будут обновлены после загрузки PDF в репозиторий.*
  
