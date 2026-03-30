@@ -1,0 +1,3111 @@
+openapi: 3.0.3
+info:
+  title: Trip Plan API
+  description: |
+    API мобильного приложения Trip Plan — цифрового спутника для планирования путешествий.
+  version: 1.0.0
+  contact:
+    name: Trip Plan Support
+
+servers:
+  - url: https://api.tripplan.ru/v1
+
+tags:
+  - name: Регистрация и авторизация
+    description: Регистрация, вход и верификация
+  - name: Пользователи
+    description: Управление профилем пользователя и удаление аккаунта
+  - name: Поездки
+    description: Управление поездками клиентами и администраторами
+  - name: Участники поездки
+    description: Управление участниками поездки
+  - name: Документы
+    description: Загрузка и управление документами поездки
+  - name: Расходы
+    description: Ведение расходов по поездке
+  - name: Точки интереса (POI)
+    description: Добавление точек интереса в поездку
+  - name: Заметки
+    description: Заметки к поездке
+  - name: Каталог POI
+    description: Администрирование каталога точек интереса
+  - name: Дополнительные услуги
+    description: Администрирование каталога дополнительных услуг
+  - name: Покупка доп. услуг
+    description: Приобретение дополнительных услуг
+  - name: Поддержка
+    description: Техническая поддержка и модерация
+  - name: Уведомления
+    description: Уведомления и настройки уведомлений
+  - name: Отчеты
+    description: Отчёты и аналитика для администраторов
+  - name: Справочники
+    description: Справочники категорий расходов, стран, городов и валют
+
+paths:
+
+  /auth/otp/send:
+    post:
+      tags: [Регистрация и авторизация]
+      operationId: sendOtp
+      summary: Отправить одноразовый код по SMS
+      description: |
+        Отправляет одноразовый код подтверждения на указанный номер телефона.
+        Код действителен 5 минут и используется для регистрации и входа.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpSendRequest'
+      responses:
+        '200':
+          description: Код отправлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OtpSendResponse'
+        '429':
+          description: Слишком много запросов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/otp/verify:
+    post:
+      tags: [Регистрация и авторизация]
+      operationId: verifyOtp
+      summary: Верифицировать одноразовый код
+      description: |
+        Проверяет введённый пользователем код.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpVerifyRequest'
+      responses:
+        '200':
+          description: Код верифицирован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Неверный или просроченный код
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/register:
+    post:
+      tags: [Регистрация и авторизация]
+      operationId: registerUser
+      summary: Завершить регистрацию нового пользователя
+      description: |
+        Завершает регистрацию после верификации OTP. Пользователь указывает имя и фамилию
+        и подтверждает согласие на обработку персональных данных.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Пользователь зарегистрирован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '409':
+          description: Пользователь уже существует
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/social:
+    post:
+      tags: [Регистрация и авторизация]
+      operationId: socialAuth
+      summary: Вход/регистрация через социальную сеть
+      description: |
+        Авторизация через внешнего провайдера (VK, Telegram, Яндекс).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SocialAuthRequest'
+      responses:
+        '200':
+          description: Успешная авторизация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/refresh:
+    post:
+      tags: [Регистрация и авторизация]
+      operationId: refreshToken
+      summary: Обновить токен доступа
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                accessToken:
+                  type: string
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: Токены обновлены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Невалидный refresh-токен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /users:
+    parameters:
+      - $ref: '#/components/parameters/UserIdParam'
+
+    get:
+      tags: [Пользователи]
+      operationId: getCurrentUser
+      summary: Получить профиль текущего пользователя
+      responses:
+        '200':
+          description: Профиль пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    patch:
+      tags: [Пользователи]
+      operationId: updateCurrentUser
+      summary: Обновить профиль текущего пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        '200':
+          description: Профиль обновлён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags: [Пользователи]
+      operationId: deleteCurrentUser
+      summary: Удалить аккаунт текущего пользователя
+      description: Полное удаление аккаунта и персональных данных в соответствии с 152-ФЗ.
+      responses:
+        '204':
+          description: Аккаунт удалён
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /users/notification-settings:
+    parameters:
+      - $ref: '#/components/parameters/UserIdParam'
+
+    get:
+      tags: [Пользователи]
+      operationId: getNotificationSettings
+      summary: Получить настройки уведомлений
+      description: Получение текущих настроек уведомлений пользователя.
+      responses:
+        '200':
+          description: Настройки уведомлений
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationSettings'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    put:
+      tags: [Пользователи]
+      operationId: updateNotificationSettings
+      summary: Обновить настройки уведомлений
+      description: Управление настройками push, SMS и уведомлений.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationSettings'
+      responses:
+        '200':
+          description: Настройки обновлены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationSettings'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /trips:
+    parameters:
+      - $ref: '#/components/parameters/UserIdParam'
+
+    get:
+      tags: [Поездки]
+      operationId: listTrips
+      summary: Получить список поездок текущего пользователя
+      description: |
+        Возвращает поездки пользователя: собственные, совместные и созданные администратором.
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [upcoming, active, past]
+          description: Фильтр по статусу поездки
+      responses:
+        '200':
+          description: Список поездок
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripListResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [Поездки]
+      operationId: createTrip
+      summary: Создать поездку
+      description: |
+        Создание новой поездки пользователем. Обязательные поля: страна, города, даты.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TripCreateRequest'
+      responses:
+        '201':
+          description: Поездка создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+        '422':
+          description: Некорректные параметры
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /trips/{tripId}:
+    parameters:
+      - $ref: '#/components/parameters/TripIdParam'
+      - $ref: '#/components/parameters/UserIdParam'
+
+    get:
+      tags: [Поездки]
+      operationId: getTrip
+      summary: Получить детали поездки
+      description: |
+        Возвращает полную информацию о поездке, включая города, участников,
+        точки интереса и суммарные расходы.
+      responses:
+        '200':
+          description: Детали поездки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripDetail'
+        '403':
+          description: Нет доступа к поездке
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Поездка не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    put:
+      tags: [Поездки]
+      operationId: updateTrip
+      summary: Обновить параметры поездки
+      description: Редактирование страны, городов и дат поездки.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TripUpdateRequest'
+      responses:
+        '200':
+          description: Поездка обновлена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+        '422':
+          description: Некорректные параметры
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags: [Поездки]
+      operationId: deleteTrip
+      summary: Удалить поездку
+      responses:
+        '204':
+          description: Поездка удалена
+        '403':
+          description: Нет прав на удаление
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /trips/{tripId}/suggestions:
+    parameters:
+      - $ref: '#/components/parameters/TripIdParam'
+      - $ref: '#/components/parameters/UserIdParam'
+
+    get:
+      tags: [Поездки]
+      operationId: getTripSuggestions
+      summary: Получить рекомендации для поездки
+      description: |
+        При создании или изменении направления возвращает релевантные POI
+        и дополнительные услуги для выбранного направления.
+      responses:
+        '200':
+          description: Рекомендации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripSuggestions'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /trips/{tripId}/expense-summary:
+    parameters:
+      - $ref: '#/components/parameters/TripIdParam'
+      - $ref: '#/components/parameters/UserIdParam'
+    get:
+      tags: [Расходы]
+      operationId: getTripExpenseSummary
+      summary: Получить сводку расходов по поездке
+      description: Суммарные расходы по поездке и по категориям.
+      responses:
+        '200':
+          description: Сводка расходов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpenseSummary'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /trips/{tripId}/expense-report:
+    parameters:
+      - $ref: '#/components/parameters/TripIdParam'
+      - $ref: '#/components/parameters/UserIdParam'
+    get:
+      tags: [Расходы]
+      operationId: exportTripExpenseReport
+      summary: Экспортировать отчёт по расходам
+      description: Экспорт отчёта по расходам в формате PDF или CSV.
+      parameters:
+        - name: format
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [pdf, csv]
+      responses:
+        '200':
+          description: Файл отчёта
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /trips/{tripId}/members:
+    parameters:
+      - $ref: '#/components/parameters/TripIdParam'
+      - $ref: '#/components/parameters/UserIdParam'
+
+    get:
+      tags: [Участники поездки]
+      operationId: listTripMembers
+      summary: Получить список участников поездки
+      description: Возвращает всех участников совместной поездки с их ролями.
+      responses:
+        '200':
+          description: Список участников
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TripMember'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [Участники поездки]
+      operationId: addTripMember
+      summary: Добавить участника в поездку
+      description: |
+        Добавление другого пользователя в поездку с настройкой прав доступа.
+        Доступно только владельцу поездки.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TripMemberCreateRequest'
+      responses:
+        '201':
+          description: Участник добавлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripMember'
+        '409':
+          description: Участник уже добавлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /trips/{tripId}/members/{memberId}:
+    parameters:
+      - $ref: '#/components/parameters/TripIdParam'
+      - $ref: '#/components/parameters/UserIdParam'
+      - name: memberId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      tags: [Участники поездки]
+      operationId: updateTripMember
+      summary: Изменить права участника поездки
+      description: Управление правами доступа участника.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TripMemberUpdateRequest'
+      responses:
+        '200':
+          description: Права обновлены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripMember'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags: [Участники поездки]
+      operationId: removeTripMember
+      summary: Удалить участника из поездки
+      responses:
+        '204':
+          description: Участник удалён
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /trips/{tripId}/documents:
+    parameters:
+      - $ref: '#/components/parameters/TripIdParam'
+      - $ref: '#/components/parameters/UserIdParam'
+
+    get:
+      tags: [Документы]
+      operationId: listTripDocuments
+      summary: Получить список документов поездки
+      description: Возвращает все прикреплённые документы поездки.
+      responses:
+        '200':
+          description: Список документов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TripDocument'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [Документы]
+      operationId: uploadTripDocument
+      summary: Загрузить документ в поездку
+      description: |
+        Загрузка документа в поездку. Поддерживаемые форматы: PDF, JPG, PNG.
+        Максимальный размер файла: 10 МБ. Суммарно до 50 МБ на поездку.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Файл документа (PDF, JPG, PNG, макс. 10 МБ)
+      responses:
+        '201':
+          description: Документ загружен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripDocument'
+        '413':
+          description: Файл превышает допустимый размер
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '415':
+          description: Неподдерживаемый формат файла
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Превышен суммарный лимит хранилища поездки (50 МБ)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /trips/{tripId}/documents/{documentId}:
+    parameters:
+      - $ref: '#/components/parameters/TripIdParam'
+      - $ref: '#/components/parameters/UserIdParam'
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Документы]
+      operationId: getTripDocument
+      summary: Получить метаданные документа
+      responses:
+        '200':
+          description: Метаданные документа
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripDocument'
+        '404':
+          description: Документ не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags: [Документы]
+      operationId: deleteTripDocument
+      summary: Удалить документ из поездки
+      responses:
+        '204':
+          description: Документ удалён
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /trips/{tripId}/documents/{documentId}/download:
+    parameters:
+      - $ref: '#/components/parameters/TripIdParam'
+      - $ref: '#/components/parameters/UserIdParam'
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Документы]
+      operationId: downloadTripDocument
+      summary: Скачать файл документа
+      description: Возвращает бинарное содержимое файла для офлайн-доступа.
+      responses:
+        '200':
+          description: Файл документа
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Документ не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /trips/{tripId}/expenses:
+    parameters:
+      - $ref: '#/components/parameters/TripIdParam'
+      - $ref: '#/components/parameters/UserIdParam'
+
+    get:
+      tags: [Расходы]
+      operationId: listTripExpenses
+      summary: Получить список расходов по поездке
+      description: Возвращает расходы поездки с возможностью фильтрации по категории.
+      parameters:
+        - name: categoryId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Фильтр по категории расходов
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: Список расходов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpenseListResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [Расходы]
+      operationId: createTripExpense
+      summary: Добавить расход в поездку
+      description: |
+        Создание записи о расходе с указанием суммы, категории, валюты и даты.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpenseCreateRequest'
+      responses:
+        '201':
+          description: Расход добавлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+        '422':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /trips/{tripId}/expenses/{expenseId}:
+    parameters:
+      - $ref: '#/components/parameters/TripIdParam'
+      - $ref: '#/components/parameters/UserIdParam'
+      - name: expenseId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Расходы]
+      operationId: getTripExpense
+      summary: Получить расход по идентификатору
+      responses:
+        '200':
+          description: Расход
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+        '404':
+          description: Расход не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    put:
+      tags: [Расходы]
+      operationId: updateTripExpense
+      summary: Обновить расход
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpenseUpdateRequest'
+      responses:
+        '200':
+          description: Расход обновлён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags: [Расходы]
+      operationId: deleteTripExpense
+      summary: Удалить расход
+      responses:
+        '204':
+          description: Расход удалён
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+
+  /trips/{tripId}/notes:
+    parameters:
+      - $ref: '#/components/parameters/TripIdParam'
+      - $ref: '#/components/parameters/UserIdParam'
+
+    get:
+      tags: [Заметки]
+      operationId: listTripNotes
+      summary: Получить заметки к поездке
+      description: Возвращает заметки пользователя по поездке.
+      responses:
+        '200':
+          description: Список заметок
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TripNote'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [Заметки]
+      operationId: createTripNote
+      summary: Добавить заметку к поездке
+      description: Создание заметки с поддержкой офлайн-режима.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TripNoteCreateRequest'
+      responses:
+        '201':
+          description: Заметка создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripNote'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /trips/{tripId}/notes/{noteId}:
+    parameters:
+      - $ref: '#/components/parameters/TripIdParam'
+      - $ref: '#/components/parameters/UserIdParam'
+      - name: noteId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      tags: [Заметки]
+      operationId: updateTripNote
+      summary: Обновить заметку
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TripNoteUpdateRequest'
+      responses:
+        '200':
+          description: Заметка обновлена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripNote'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags: [Заметки]
+      operationId: deleteTripNote
+      summary: Удалить заметку
+      responses:
+        '204':
+          description: Заметка удалена
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /trips/{tripId}/pois:
+    parameters:
+      - $ref: '#/components/parameters/TripIdParam'
+      - $ref: '#/components/parameters/UserIdParam'
+
+    get:
+      tags: [Точки интереса (POI)]
+      operationId: listTripPois
+      summary: Получить точки интереса поездки
+      description: Возвращает POI, добавленные в план поездки.
+      responses:
+        '200':
+          description: Список POI поездки
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TripPoi'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [Точки интереса (POI)]
+      operationId: addPoiToTrip
+      summary: Добавить точку интереса в поездку
+      description: Добавление POI из каталога агентства в план поездки.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TripPoiCreateRequest'
+      responses:
+        '201':
+          description: POI добавлен в поездку
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripPoi'
+        '409':
+          description: POI уже добавлен в поездку
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /trips/{tripId}/pois/{tripPoiId}:
+    parameters:
+      - $ref: '#/components/parameters/TripIdParam'
+      - $ref: '#/components/parameters/UserIdParam'
+      - name: tripPoiId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      tags: [Точки интереса (POI)]
+      operationId: updateTripPoi
+      summary: Обновить POI в поездке
+      description: Изменение заметки или порядка POI в маршруте.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TripPoiUpdateRequest'
+      responses:
+        '200':
+          description: POI обновлён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripPoi'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags: [Точки интереса (POI)]
+      operationId: removePoiFromTrip
+      summary: Убрать точку интереса из поездки
+      responses:
+        '204':
+          description: POI удалён из поездки
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+
+  /pois:
+    parameters:
+      - $ref: '#/components/parameters/UserIdParam'
+    get:
+      tags: [Каталог POI]
+      operationId: listPois
+      summary: Получить каталог точек интереса
+      description: |
+        Возвращает POI из курируемого каталога агентства.
+        Для клиентов — только активные. Для админов — все.
+      parameters:
+        - name: cityId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Фильтр по городу
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Фильтр по категории POI
+        - name: isActive
+          in: query
+          schema:
+            type: boolean
+          description: Фильтр по активности (только для администраторов)
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Поиск по названию
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: Каталог POI
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PoiListResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [Каталог POI]
+      operationId: createPoi
+      summary: Создать точку интереса (Администратор)
+      description: Создание POI в каталоге агентства.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PoiCreateRequest'
+      responses:
+        '201':
+          description: POI создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Poi'
+        '422':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /pois/map:
+    parameters:
+      - $ref: '#/components/parameters/UserIdParam'
+    get:
+      tags: [Каталог POI]
+      operationId: getPoisForMap
+      summary: Получить POI для отображения на карте
+      description: |
+        Возвращает POI в заданной области карты для интерактивного выбора.
+      parameters:
+        - name: northEastLat
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+        - name: northEastLng
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+        - name: southWestLat
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+        - name: southWestLng
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+      responses:
+        '200':
+          description: POI на карте
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PoiMapItem'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /pois/{poiId}:
+    parameters:
+      - $ref: '#/components/parameters/UserIdParam'
+      - name: poiId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Каталог POI]
+      operationId: getPoi
+      summary: Получить детали точки интереса
+      responses:
+        '200':
+          description: Детали POI
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Poi'
+        '404':
+          description: POI не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    put:
+      tags: [Каталог POI]
+      operationId: updatePoi
+      summary: Обновить точку интереса (Администратор)
+      description: Редактирование POI в каталоге.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PoiUpdateRequest'
+      responses:
+        '200':
+          description: POI обновлён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Poi'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags: [Каталог POI]
+      operationId: deletePoi
+      summary: Удалить точку интереса (Администратор)
+      description: Удаление POI из каталога.
+      responses:
+        '204':
+          description: POI удалён
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /services:
+    parameters:
+      - $ref: '#/components/parameters/UserIdParam'
+    get:
+      tags: [Дополнительные услуги]
+      operationId: listServices
+      summary: Получить каталог дополнительных услуг
+      description: |
+        Каталог дополнительных услуг агентства (экскурсии, трансферы, страховки).
+        Клиентам — активные, админам — все.
+      parameters:
+        - name: cityId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Фильтр по городу
+        - name: serviceType
+          in: query
+          schema:
+            type: string
+            enum: [excursion, transfer, insurance, other]
+          description: Фильтр по типу услуги
+        - name: isActive
+          in: query
+          schema:
+            type: boolean
+          description: Фильтр по активности (только для администраторов)
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: Каталог услуг
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceListResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [Дополнительные услуги]
+      operationId: createService
+      summary: Создать услугу (Администратор)
+      description: Добавление услуги в каталог.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceCreateRequest'
+      responses:
+        '201':
+          description: Услуга создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+        '422':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /services/{serviceId}:
+    parameters:
+      - $ref: '#/components/parameters/UserIdParam'
+      - name: serviceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Дополнительные услуги]
+      operationId: getService
+      summary: Получить детали услуги
+      responses:
+        '200':
+          description: Детали услуги
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+        '404':
+          description: Услуга не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    put:
+      tags: [Дополнительные услуги]
+      operationId: updateService
+      summary: Обновить услугу (Администратор)
+      description: Редактирование услуги в каталоге.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceUpdateRequest'
+      responses:
+        '200':
+          description: Услуга обновлена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags: [Дополнительные услуги]
+      operationId: deleteService
+      summary: Удалить услугу (Администратор)
+      description: Удаление услуги из каталога.
+      responses:
+        '204':
+          description: Услуга удалена
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /purchases:
+    parameters:
+      - $ref: '#/components/parameters/UserIdParam'
+    get:
+      tags: [Покупка доп. услуг]
+      operationId: listMyPurchases
+      summary: Получить список покупок текущего пользователя
+      parameters:
+        - name: tripId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Фильтр по поездке
+        - name: paymentStatus
+          in: query
+          schema:
+            type: string
+            enum: [pending, completed, failed, refunded]
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: Список покупок
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseListResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [Покупка доп. услуг]
+      operationId: createPurchase
+      summary: Приобрести дополнительную услугу
+      description: |
+        Инициирование покупки дополнительной услуги. Система создаёт запись о покупке
+        и инициирует оплату через платёжный шлюз.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PurchaseCreateRequest'
+      responses:
+        '201':
+          description: Покупка инициирована
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Purchase'
+        '422':
+          description: Услуга недоступна или некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /purchases/{purchaseId}:
+    parameters:
+      - $ref: '#/components/parameters/UserIdParam'
+      - name: purchaseId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Покупка доп. услуг]
+      operationId: getPurchase
+      summary: Получить статус покупки
+      description: Статус и детали конкретной покупки с результатом операции.
+      responses:
+        '200':
+          description: Детали покупки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Purchase'
+        '404':
+          description: Покупка не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /purchases/{purchaseId}/confirm:
+    parameters:
+      - $ref: '#/components/parameters/UserIdParam'
+      - name: purchaseId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [Покупка доп. услуг]
+      operationId: confirmPurchasePayment
+      summary: Подтвердить оплату покупки
+      description: |
+        Ответ от платёжного шлюза или подтверждение со стороны клиента
+        после завершения оплаты.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentConfirmRequest'
+      responses:
+        '200':
+          description: Статус оплаты обновлён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Purchase'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /support/tickets:
+    parameters:
+      - $ref: '#/components/parameters/UserIdParam'
+    get:
+      tags: [Поддержка]
+      operationId: listSupportTickets
+      summary: Получить список обращений
+      description: |
+        Для клиента — собственные обращения. Для администратора — все обращения.
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, in_progress, resolved, needs_work]
+        - name: assignedTo
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Фильтр по назначенному администратору
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: Список обращений
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupportTicketListResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [Поддержка]
+      operationId: createSupportTicket
+      summary: Создать обращение в поддержку
+      description: Пользователь создаёт обращение в техническую поддержку.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupportTicketCreateRequest'
+      responses:
+        '201':
+          description: Обращение создано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupportTicket'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /support/tickets/{ticketId}:
+    parameters:
+      - $ref: '#/components/parameters/UserIdParam'
+      - name: ticketId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Поддержка]
+      operationId: getSupportTicket
+      summary: Получить детали обращения
+      responses:
+        '200':
+          description: Детали обращения
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupportTicket'
+        '404':
+          description: Обращение не найдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    patch:
+      tags: [Поддержка]
+      operationId: updateSupportTicket
+      summary: Обновить обращение (Администратор)
+      description: |
+        Изменение статуса обращения, назначение администратора,
+        добавление комментария.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupportTicketUpdateRequest'
+      responses:
+        '200':
+          description: Обращение обновлено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupportTicket'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /notifications:
+    parameters:
+      - $ref: '#/components/parameters/UserIdParam'
+    get:
+      tags: [Уведомления]
+      operationId: listNotifications
+      summary: Получить уведомления пользователя
+      description: Список уведомлений текущего пользователя.
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [reminder, change]
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: Список уведомлений
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationListResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /notifications/{notificationId}:
+    parameters:
+      - $ref: '#/components/parameters/UserIdParam'
+      - name: notificationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Уведомления]
+      operationId: getNotification
+      summary: Получить уведомление
+      responses:
+        '200':
+          description: Уведомление
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+        '404':
+          description: Уведомление не найдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /admin/reports/destination-popularity:
+    parameters:
+      - $ref: '#/components/parameters/UserIdParam'
+    get:
+      tags: [Отчеты]
+      operationId: getDestinationPopularityReport
+      summary: Отчёт по популярности направлений
+      description: |
+        ТОП направлений за период с фильтрами по сегменту клиентов.
+      parameters:
+        - name: periodStart
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: periodEnd
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: Количество записей в ТОП
+      responses:
+        '200':
+          description: Отчёт по направлениям
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DestinationPopularityReport'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /admin/reports/service-conversion:
+    parameters:
+      - $ref: '#/components/parameters/UserIdParam'
+    get:
+      tags: [Отчеты]
+      operationId: getServiceConversionReport
+      summary: Отчёт по конверсии в услуги
+      description: |
+        Конверсия из просмотра POI/добавления в поездку в покупку услуги
+        за выбранный период.
+      parameters:
+        - name: periodStart
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: periodEnd
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: cityId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Фильтр по городу
+      responses:
+        '200':
+          description: Отчёт по конверсии
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceConversionReport'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /admin/reports/user-activity:
+    parameters:
+      - $ref: '#/components/parameters/UserIdParam'
+    get:
+      tags: [Отчеты]
+      operationId: getUserActivityReport
+      summary: Отчёт по активности пользователей
+      description: DAU/WAU (количество уникальных пользователей), среднее количество действий на пользователя за период.
+      parameters:
+        - name: periodStart
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: periodEnd
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Отчёт по активности
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserActivityReport'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /admin/trips:
+    parameters:
+      - $ref: '#/components/parameters/UserIdParam'
+    post:
+      tags: [Поездки]
+      operationId: createTripForClient
+      summary: Создать поездку для клиента (Администратор)
+      description: |
+        Администратор создаёт поездку и привязывает её к аккаунту клиента.
+        Клиент получает доступ к поездке в приложении.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminTripCreateRequest'
+      responses:
+        '201':
+          description: Поездка создана для клиента
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+        '404':
+          description: Клиент не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Некорректные параметры
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /admin/users:
+    parameters:
+      - $ref: '#/components/parameters/UserIdParam'
+    get:
+      tags: [Пользователи]
+      operationId: listUsers
+      summary: Получить список пользователей (Администратор)
+      description: Поиск клиентов для привязки поездки.
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Поиск по имени, фамилии или телефону
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [client, admin]
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: Список пользователей
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /expense-categories:
+    parameters:
+      - $ref: '#/components/parameters/UserIdParam'
+    get:
+      tags: [Справочники]
+      operationId: listExpenseCategories
+      summary: Получить категории расходов
+      description: |
+        Возвращает системные и пользовательские категории расходов.
+        Системные: Перелёт, Жильё, Питание, Транспорт, Развлечения, Шоппинг, Сувениры.
+      responses:
+        '200':
+          description: Список категорий
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExpenseCategory'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [Справочники]
+      operationId: createExpenseCategory
+      summary: Создать пользовательскую категорию расходов
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  maxLength: 100
+      responses:
+        '201':
+          description: Категория создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpenseCategory'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /expense-categories/{categoryId}:
+    parameters:
+      - $ref: '#/components/parameters/UserIdParam'
+      - name: categoryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      tags: [Справочники]
+      operationId: deleteExpenseCategory
+      summary: Удалить пользовательскую категорию расходов
+      description: Можно удалить только пользовательские категории.
+      responses:
+        '204':
+          description: Категория удалена
+        '403':
+          description: Нельзя удалить системную категорию
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /countries:
+    parameters:
+      - $ref: '#/components/parameters/UserIdParam'
+    get:
+      tags: [Справочники]
+      operationId: listCountries
+      summary: Получить справочник стран
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Поиск по названию
+      responses:
+        '200':
+          description: Список стран
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Country'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /countries/{countryId}/cities:
+    parameters:
+      - $ref: '#/components/parameters/UserIdParam'
+      - name: countryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Справочники]
+      operationId: listCitiesByCountry
+      summary: Получить города страны
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Поиск по названию
+      responses:
+        '200':
+          description: Список городов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/City'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /currencies:
+    parameters:
+      - $ref: '#/components/parameters/UserIdParam'
+    get:
+      tags: [Справочники]
+      operationId: listCurrencies
+      summary: Получить справочник валют
+      responses:
+        '200':
+          description: Список валют
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Currency'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+
+  parameters:
+    UserIdParam:
+      name: userId
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+    TripIdParam:
+      name: tripId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+      description: Номер страницы
+    SizeParam:
+      name: size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      description: Количество элементов на странице
+
+  responses:
+    InternalError:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+
+    Error:
+      type: object
+      required: [errorId, errorCode, errorMessage]
+      properties:
+        errorId:
+          type: string
+          format: uuid
+          description: Уникальный идентификатор ошибки для трассировки
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        errorCode:
+          type: string
+          description: Код ошибки
+          example: "VALIDATION_ERROR"
+        errorMessage:
+          type: string
+          description: Человекочитаемое описание ошибки
+          example: "Поле 'startDate' обязательно для заполнения"
+
+    PageMetadata:
+      type: object
+      properties:
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+
+    OtpSendRequest:
+      type: object
+      required: [phone]
+      properties:
+        phone:
+          type: string
+          description: Номер телефона в международном формате
+          example: "+79001234567"
+          pattern: '^\+[1-9]\d{1,14}$'
+
+    OtpSendResponse:
+      type: object
+      properties:
+        otpId:
+          type: string
+          format: uuid
+          description: Идентификатор отправленного OTP
+        expiresAt:
+          type: string
+          format: date-time
+          description: Срок действия кода (5 минут)
+        retryAfterSeconds:
+          type: integer
+          description: Через сколько секунд можно повторить отправку
+
+    OtpVerifyRequest:
+      type: object
+      required: [otpId, code]
+      properties:
+        otpId:
+          type: string
+          format: uuid
+        code:
+          type: string
+          description: Одноразовый код из SMS
+          example: "123456"
+
+    RegisterRequest:
+      type: object
+      required: [registrationToken, firstName, lastName, personalDataConsent]
+      properties:
+        registrationToken:
+          type: string
+          description: Временный токен, полученный после верификации OTP
+        firstName:
+          type: string
+          maxLength: 100
+          example: "Иван"
+        lastName:
+          type: string
+          maxLength: 100
+          example: "Петров"
+        personalDataConsent:
+          type: boolean
+          description: Согласие на обработку персональных данных (152-ФЗ).
+
+    SocialAuthRequest:
+      type: object
+      required: [provider, accessToken]
+      properties:
+        provider:
+          type: string
+          enum: [vk, telegram, yandex]
+          description: Провайдер авторизации
+        accessToken:
+          type: string
+          description: Токен доступа от провайдера
+
+    AuthResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+          description: Время жизни access-токена в секундах
+        isNewUser:
+          type: boolean
+          description: true, если пользователь новый и нужна регистрация
+        registrationToken:
+          type: string
+          description: Временный токен для завершения регистрации
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        phone:
+          type: string
+        role:
+          type: string
+          enum: [client, admin]
+        isActive:
+          type: boolean
+        socialAccounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/SocialAccount'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SocialAccount:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        provider:
+          type: string
+          enum: [vk, telegram, yandex]
+        providerName:
+          type: string
+
+    UserUpdateRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+          maxLength: 100
+        lastName:
+          type: string
+          maxLength: 100
+
+    UserListResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        page:
+          $ref: '#/components/schemas/PageMetadata'
+
+    NotificationSettings:
+      type: object
+      properties:
+        notificationsPush:
+          type: boolean
+        notificationsSms:
+          type: boolean
+
+
+    Country:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        isoCode:
+          type: string
+          minLength: 2
+          maxLength: 2
+
+    City:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        countryId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        timezone:
+          type: string
+          example: "Europe/Moscow"
+
+    Currency:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          example: "RUB"
+        name:
+          type: string
+          example: "Российский рубль"
+        symbol:
+          type: string
+          example: "₽"
+
+    TripCreateRequest:
+      type: object
+      required: [title, countryId, cityIds, startDate, endDate]
+      properties:
+        title:
+          type: string
+          maxLength: 255
+          description: Название поездки
+        countryId:
+          type: string
+          format: uuid
+        cityIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          minItems: 1
+          description: Города маршрута (в порядке посещения)
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+
+    TripUpdateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 255
+        countryId:
+          type: string
+          format: uuid
+        cityIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          minItems: 1
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+
+    AdminTripCreateRequest:
+      type: object
+      required: [clientUserId, title, countryId, cityIds, startDate, endDate]
+      properties:
+        clientUserId:
+          type: string
+          format: uuid
+          description: ID клиента, для которого создаётся поездка
+        title:
+          type: string
+          maxLength: 255
+        countryId:
+          type: string
+          format: uuid
+        cityIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          minItems: 1
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+
+    Trip:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        country:
+          $ref: '#/components/schemas/Country'
+        cities:
+          type: array
+          items:
+            $ref: '#/components/schemas/TripCity'
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        createdBy:
+          type: string
+          format: uuid
+        memberRole:
+          type: string
+          enum: [owner, editor, viewer]
+          description: Роль текущего пользователя в поездке
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TripCity:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        city:
+          $ref: '#/components/schemas/City'
+        sortOrder:
+          type: integer
+
+    TripDetail:
+      allOf:
+        - $ref: '#/components/schemas/Trip'
+        - type: object
+          properties:
+            members:
+              type: array
+              items:
+                $ref: '#/components/schemas/TripMember'
+            pois:
+              type: array
+              items:
+                $ref: '#/components/schemas/TripPoi'
+            expenseSummary:
+              $ref: '#/components/schemas/ExpenseSummary'
+            documentsCount:
+              type: integer
+            notesCount:
+              type: integer
+
+    TripListResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Trip'
+        page:
+          $ref: '#/components/schemas/PageMetadata'
+
+    TripSuggestions:
+      type: object
+      properties:
+        suggestedPois:
+          type: array
+          items:
+            $ref: '#/components/schemas/Poi'
+        suggestedServices:
+          type: array
+          items:
+            $ref: '#/components/schemas/Service'
+
+    TripMember:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user:
+          $ref: '#/components/schemas/UserBrief'
+        role:
+          type: string
+          enum: [owner, editor, viewer]
+        createdAt:
+          type: string
+          format: date-time
+
+    UserBrief:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+
+    TripMemberCreateRequest:
+      type: object
+      required: [userId, role]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [editor, viewer]
+          description: Роль участника
+
+    TripMemberUpdateRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          type: string
+          enum: [editor, viewer]
+
+    TripDocument:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tripId:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+        fileType:
+          type: string
+          enum: [pdf, jpg, png]
+        fileSizeBytes:
+          type: integer
+        uploadedBy:
+          $ref: '#/components/schemas/UserBrief'
+        createdAt:
+          type: string
+          format: date-time
+
+    ExpenseCreateRequest:
+      type: object
+      required: [categoryId, currencyId, amount, expenseDate]
+      properties:
+        categoryId:
+          type: string
+          format: uuid
+        currencyId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+          description: Сумма расхода
+        description:
+          type: string
+          maxLength: 500
+        expenseDate:
+          type: string
+          format: date
+        isSynced:
+          type: boolean
+          default: true
+          description: false при создании в офлайн-режиме
+
+    ExpenseUpdateRequest:
+      type: object
+      properties:
+        categoryId:
+          type: string
+          format: uuid
+        currencyId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+        description:
+          type: string
+          maxLength: 500
+        expenseDate:
+          type: string
+          format: date
+
+    Expense:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tripId:
+          type: string
+          format: uuid
+        category:
+          $ref: '#/components/schemas/ExpenseCategory'
+        currency:
+          $ref: '#/components/schemas/Currency'
+        createdBy:
+          $ref: '#/components/schemas/UserBrief'
+        amount:
+          type: number
+          format: double
+        description:
+          type: string
+        expenseDate:
+          type: string
+          format: date
+        isSynced:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ExpenseListResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Expense'
+        page:
+          $ref: '#/components/schemas/PageMetadata'
+
+    ExpenseSummary:
+      type: object
+      properties:
+        totalByCurrency:
+          type: array
+          items:
+            type: object
+            properties:
+              currency:
+                $ref: '#/components/schemas/Currency'
+              total:
+                type: number
+                format: double
+        byCategory:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                $ref: '#/components/schemas/ExpenseCategory'
+              totalByCurrency:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    currency:
+                      $ref: '#/components/schemas/Currency'
+                    total:
+                      type: number
+                      format: double
+
+    ExpenseCategory:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        isSystem:
+          type: boolean
+
+    TripNote:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tripId:
+          type: string
+          format: uuid
+        content:
+          type: string
+        createdBy:
+          $ref: '#/components/schemas/UserBrief'
+        isSynced:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TripNoteCreateRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+          description: Текст заметки
+        isSynced:
+          type: boolean
+          default: true
+
+    TripNoteUpdateRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+
+    Poi:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        cityId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        address:
+          type: string
+        category:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PoiMapItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        category:
+          type: string
+
+    PoiCreateRequest:
+      type: object
+      required: [cityId, name, latitude, longitude]
+      properties:
+        cityId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+        address:
+          type: string
+          maxLength: 500
+        category:
+          type: string
+          maxLength: 100
+        isActive:
+          type: boolean
+          default: true
+
+    PoiUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+        address:
+          type: string
+          maxLength: 500
+        category:
+          type: string
+          maxLength: 100
+        isActive:
+          type: boolean
+
+    PoiListResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Poi'
+        page:
+          $ref: '#/components/schemas/PageMetadata'
+
+    TripPoi:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        poi:
+          $ref: '#/components/schemas/Poi'
+        addedBy:
+          $ref: '#/components/schemas/UserBrief'
+        note:
+          type: string
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    TripPoiCreateRequest:
+      type: object
+      required: [poiId]
+      properties:
+        poiId:
+          type: string
+          format: uuid
+        note:
+          type: string
+          description: Заметка пользователя к POI
+        sortOrder:
+          type: integer
+          default: 0
+
+    TripPoiUpdateRequest:
+      type: object
+      properties:
+        note:
+          type: string
+        sortOrder:
+          type: integer
+
+    Service:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        cityId:
+          type: string
+          format: uuid
+          nullable: true
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+          format: double
+        currency:
+          $ref: '#/components/schemas/Currency'
+        serviceType:
+          type: string
+          enum: [excursion, transfer, insurance, other]
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ServiceCreateRequest:
+      type: object
+      required: [name, price, currencyId, serviceType]
+      properties:
+        cityId:
+          type: string
+          format: uuid
+          description: Город привязки (null для услуг без привязки)
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        price:
+          type: number
+          format: double
+          minimum: 0
+        currencyId:
+          type: string
+          format: uuid
+        serviceType:
+          type: string
+          enum: [excursion, transfer, insurance, other]
+        isActive:
+          type: boolean
+          default: true
+
+    ServiceUpdateRequest:
+      type: object
+      properties:
+        cityId:
+          type: string
+          format: uuid
+          nullable: true
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        price:
+          type: number
+          format: double
+          minimum: 0
+        currencyId:
+          type: string
+          format: uuid
+        serviceType:
+          type: string
+          enum: [excursion, transfer, insurance, other]
+        isActive:
+          type: boolean
+
+    ServiceListResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Service'
+        page:
+          $ref: '#/components/schemas/PageMetadata'
+
+    PurchaseCreateRequest:
+      type: object
+      required: [serviceId]
+      properties:
+        serviceId:
+          type: string
+          format: uuid
+        tripId:
+          type: string
+          format: uuid
+          description: Привязка к поездке
+
+    PaymentConfirmRequest:
+      type: object
+      required: [paymentGatewayId, status]
+      properties:
+        paymentGatewayId:
+          type: string
+          description: Идентификатор транзакции от платёжного шлюза
+        status:
+          type: string
+          enum: [completed, failed]
+
+    Purchase:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        service:
+          $ref: '#/components/schemas/Service'
+        tripId:
+          type: string
+          format: uuid
+          nullable: true
+        paidAmount:
+          type: number
+          format: double
+        currency:
+          $ref: '#/components/schemas/Currency'
+        paymentStatus:
+          type: string
+          enum: [pending, completed, failed, refunded]
+        paymentGatewayId:
+          type: string
+          nullable: true
+        paymentUrl:
+          type: string
+          format: uri
+          description: URL для перенаправления на страницу оплаты
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    PurchaseListResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Purchase'
+        page:
+          $ref: '#/components/schemas/PageMetadata'
+
+    SupportTicketCreateRequest:
+      type: object
+      required: [subject, message]
+      properties:
+        subject:
+          type: string
+          maxLength: 255
+        message:
+          type: string
+
+    SupportTicketUpdateRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [open, in_progress, resolved, needs_work]
+        assignedTo:
+          type: string
+          format: uuid
+          description: ID администратора
+
+    SupportTicket:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user:
+          $ref: '#/components/schemas/UserBrief'
+        assignedTo:
+          $ref: '#/components/schemas/UserBrief'
+        subject:
+          type: string
+        message:
+          type: string
+        status:
+          type: string
+          enum: [open, in_progress, resolved, needs_work]
+        resolvedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SupportTicketListResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/SupportTicket'
+        page:
+          $ref: '#/components/schemas/PageMetadata'
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tripId:
+          type: string
+          format: uuid
+          nullable: true
+        notificationType:
+          type: string
+          enum: [reminder, change]
+        channel:
+          type: string
+          enum: [push, sms]
+        status:
+          type: string
+          enum: [pending, sent, failed]
+        title:
+          type: string
+        body:
+          type: string
+        scheduledAt:
+          type: string
+          format: date-time
+          nullable: true
+        sentAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    NotificationListResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+        page:
+          $ref: '#/components/schemas/PageMetadata'
+
+    DestinationPopularityReport:
+      type: object
+      properties:
+        periodStart:
+          type: string
+          format: date
+        periodEnd:
+          type: string
+          format: date
+        topCountries:
+          type: array
+          items:
+            type: object
+            properties:
+              country:
+                $ref: '#/components/schemas/Country'
+              tripCount:
+                type: integer
+              uniqueUsers:
+                type: integer
+        topCities:
+          type: array
+          items:
+            type: object
+            properties:
+              city:
+                $ref: '#/components/schemas/City'
+
+              tripCount:
+                type: integer
+              uniqueUsers:
+                type: integer
+
+    ServiceConversionReport:
+      type: object
+      properties:
+        periodStart:
+          type: string
+          format: date
+        periodEnd:
+          type: string
+          format: date
+        conversions:
+          type: array
+          items:
+            type: object
+            properties:
+              city:
+                $ref: '#/components/schemas/City'
+              poiViewCount:
+                type: integer
+                description: Количество пользователей, добавивших POI
+              servicePurchaseCount:
+                type: integer
+                description: Количество пользователей, купивших услугу
+              conversionRate:
+                type: number
+                format: double
+                description: Процент конверсии
+
+    UserActivityReport:
+      type: object
+      properties:
+        periodStart:
+          type: string
+          format: date
+        periodEnd:
+          type: string
+          format: date
+        dau:
+          type: number
+          format: double
+          description: Среднее DAU (уникальное количество пользователей за сутки) за период
+        wau:
+          type: number
+          format: double
+          description: Среднее WAU (уникальное количество пользователей за неделю) за период
+        avgActionsPerUser:
+          type: number
+          format: double
+          description: Среднее количество действий на пользователя
