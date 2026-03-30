@@ -23,9 +23,9 @@ trip-plan/
 │   ├── requirements.md           # Формализованные требования (ФТ/НФТ)
 │   ├── use_cases.md              # Варианты использования
 │   ├── srs.md                    # Спецификация требований (SRS)
-│   └── diagrams/
-│       ├── er-diagram.png           # ER-диаграмма
-│       └── use-case-diagram.png     # Диаграмма вариантов использования
+│── diagrams/
+│    ├── er-diagram.png           # ER-диаграмма
+│    └── use-case-diagram.png     # Диаграмма вариантов использования
 └── api/
     └── openapi.yaml                 # Спецификация REST API (OpenAPI 3.0.3)
 ```
