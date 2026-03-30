@@ -19,7 +19,7 @@
 - **Базы данных:** PostgreSQL, SQL (DDL/DML)
 - **Инструменты:** Draw.io, Swagger Editor, Markdown, Git
 
-## Контакты
+## Контакты и резюме
 
 - GitHub: [EugeneLav7](https://github.com/EugeneLav7)
 - Telegram: [Haru_no_hana](https://t.me/Haru_no_hana)
