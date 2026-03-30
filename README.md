@@ -74,7 +74,7 @@
  
 ---
  
-## 📫 Контакты
+## 📫 Контакты и резюме
  
 [![Email](https://img.shields.io/badge/lavrenteva.zhenya@mail.ru-D14836?style=for-the-badge&logo=mail.ru&logoColor=white)](mailto:lavrenteva.zhenya@mail.ru)
 [![Telegram](https://img.shields.io/badge/@Haru__no__hana-26A5E4?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/Haru_no_hana)
